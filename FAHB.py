@@ -5,7 +5,7 @@ import json
 from playsound3 import playsound
 
 
-version = "0.2.4"
+version = "0.3.0"
 exe_path = path.abspath(path.dirname(__file__))
 config_path = Path.home() / "AppData" / "Local" / "FAHBot"
 template_path = path.join(exe_path, 'settings.json')
