@@ -3,13 +3,16 @@ from os import path, makedirs
 from pathlib import Path
 import json
 from playsound3 import playsound
-
+import websockets
+import asyncio
 
 version = "0.3.0"
 exe_path = path.abspath(path.dirname(__file__))
 config_path = Path.home() / "AppData" / "Local" / "FAHBot"
 template_path = path.join(exe_path, 'settings.json')
 fah_path = path.join(exe_path, "FAH.mp3")
+
+
 
 
 def main():
@@ -26,7 +29,17 @@ def main():
     mainframe.grid(padx=50,pady=50)
     title.grid(column=1,row=1)
     #toggle.grid(column=1,row=2)
-    root.mainloop()
+
+    
+    async def client():
+        url = "ws://localhost:2288"
+        async with websockets.connect(url) as websocket:
+            await websocket.send("HELLO SERVER")
+            reply = await websocket.recv()
+            print(reply)
+
+    asyncio.run(client())
+    #root.mainloop()
 
 
 
@@ -34,7 +47,10 @@ def main():
 
 
 def startup():
-
+    '''
+    opens a UI for user to initialize application
+    :return:
+    '''
 
 
     root = Tk()
