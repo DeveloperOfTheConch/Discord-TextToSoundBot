@@ -5,8 +5,9 @@ import json
 from playsound3 import playsound
 import websockets
 import asyncio
+import threading
 
-version = "0.3.0"
+version = "0.4.0"
 exe_path = path.abspath(path.dirname(__file__))
 config_path = Path.home() / "AppData" / "Local" / "FAHBot"
 template_path = path.join(exe_path, 'settings.json')
@@ -17,29 +18,53 @@ fah_path = path.join(exe_path, "FAH.mp3")
 
 def main():
 
+
+    async_loop = asyncio.new_event_loop()
+
+    messages = asyncio.Queue()
+    def ping():
+        async def innerping():
+            await messages.put("U PRESSED A BUTTON")
+        asyncio.run_coroutine_threadsafe(innerping(),async_loop)
+
+
     root = Tk()
     root.title("FAHBot")
     mainframe = Frame(root)
     titlevar = StringVar()
-    checkvar = IntVar()
     titlevar.set("FAH INTERACTION TEST")
     title = Label(mainframe, textvariable=titlevar, font = ("Comic Sans MS",40))
-    #toggle = Button(mainframe, font = ("Impact",25), text = "Connect", command = executeConnection)
+    toggle = Button(mainframe, font = ("Impact",25), text = "Connect", command = ping)
 
     mainframe.grid(padx=50,pady=50)
     title.grid(column=1,row=1)
-    #toggle.grid(column=1,row=2)
+    toggle.grid(column=1,row=2)
 
-    
+    async def sendit(websocket):
+        while True:
+            message = await messages.get()
+            await websocket.send(message)
+
     async def client():
         url = "ws://localhost:2288"
         async with websockets.connect(url) as websocket:
-            await websocket.send("HELLO SERVER")
-            reply = await websocket.recv()
-            print(reply)
 
-    asyncio.run(client())
-    #root.mainloop()
+            asyncio.get_running_loop().create_task(sendit(websocket))
+
+            while True:
+                print("waiting")
+                message = await websocket.recv()
+                print(message)
+
+
+    def startClient():
+        async_loop.create_task(client())
+        async_loop.run_forever()
+
+
+    threading.Thread(target=startClient, daemon=True).start()
+
+    root.mainloop()
 
 
 
