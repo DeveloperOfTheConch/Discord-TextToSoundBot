@@ -7,13 +7,11 @@ import websockets
 import asyncio
 import threading
 
-version = "0.4.0"
+version = "0.5.0"
 exe_path = path.abspath(path.dirname(__file__))
 config_path = Path.home() / "AppData" / "Local" / "FAHBot"
 template_path = path.join(exe_path, 'settings.json')
 fah_path = path.join(exe_path, "FAH.mp3")
-
-
 
 
 def main():
@@ -49,7 +47,7 @@ def main():
         url = "ws://localhost:2288"
         async with websockets.connect(url) as websocket:
 
-            asyncio.get_running_loop().create_task(sendit(websocket))
+            asyncio.get_running_loop().create_task(sendit(websocket))   #expand to subfunc to enable basically every button? maybe only one send but each button just passes coords for status change
 
             while True:
                 print("waiting")
@@ -159,3 +157,17 @@ and then need more tests for having the appdata file already
 
 
 #far future: select file creation path
+
+
+'''
+update schema:
+so basically there's only the one websocket. this sends messages to the server tagged with their id
+the server sends back messages tagged as system or sound or connection or whatever
+sound messages are processed into their own handler, download local sounds
+need an exception for nondownloaded sounds playing
+sound download on startup, on name input, whatever
+hmm actually there is a form of doxxing
+you put in anybody's name and it'll give you the list of songs in their server
+so you probably have to manually put in ids to be safe for each server you want it in
+this also allows you to manage your own downloaders
+cause otherwise there could be malicious actors who megadownload some 100gb of files'''
