@@ -22,13 +22,19 @@ def main():
     async def on_guild_remove(guild):
         send(['removeserver',guild.id])
 
+    @bot.event
+    async def on_member_join(member):
+        pass
 
+    @bot.event
+    async def on_member_remove(member):
+        pass
 
     @bot.event
     async def on_ready():
-        ids = [123]
+        ids = [ [123, [456]], [112233, [12, 34]] ]
         for i in bot.guilds:
-            ids.append(i.id)
+            ids.append([i.id,[m.id for m in i.members]])
         send(['startup',ids])
         await asyncio.sleep(3)
         print(f'{bot.user} is now online')
@@ -40,9 +46,9 @@ def main():
         print(message.content)
         if message.author == bot.user:
             return
-        #keywords = local_keywords[message.guild.id]
-        #if message.content in keywords:
-         #   send(["playsound",message.content])
+        keywords = local_keywords[message.guild.id]
+        if message.content in keywords:
+            send(["playsound",message.content])
         send(['serversettings',message.content])
 
 
@@ -52,9 +58,9 @@ def main():
         if len(keyword)>32:
             await ctx.respond("Keyword cannot be longer than 32 characters!")
             return
-        #if keyword in local_keywords[sid]:
-         #   await ctx.respond(f'{keyword} is already a keyword!')
-          #  return
+        if keyword in local_keywords[sid]:
+            await ctx.respond(f'{keyword} is already a keyword!')
+            return
         send(["addsound",sid, keyword,link])
         await ctx.respond(f"New sound added with keyword {keyword} successfully.")
         local_keywords[sid].append(keyword)
@@ -63,9 +69,9 @@ def main():
     @bot.slash_command(description="Remove a sound: /removesound <keyword>")
     async def removesound(ctx, keyword):
         sid = ctx.guild.id
-        #if keyword not in local_keywords[sid]:
-         #   ctx.respond(f'{keyword} is not an established keyword.')
-          #  return
+        if keyword not in local_keywords[sid]:
+            ctx.respond(f'{keyword} is not an established keyword.')
+            return
         send(["removesound", sid, keyword])
         await ctx.respond(f'Sound with keyword {keyword} removed.')
         local_keywords[sid].remove(keyword)
@@ -87,25 +93,24 @@ def main():
     incoming = asyncio.Queue()
 
     def send(message):
-        async def innerSend():
+        async def inner_send():
             await outgoing.put(json.dumps(message))
-        asyncio.run_coroutine_threadsafe(innerSend(),async_loop)
+        asyncio.run_coroutine_threadsafe(inner_send(),async_loop)
 
-    def sendAndRecieve(message):
-        async def innerLoop():
+    def send_and_recieve(message):
+        async def inner_loop():
             send(message)
             response = await incoming.get()
             return response
-        return asyncio.run_coroutine_threadsafe(innerLoop(),async_loop)
+        return asyncio.run_coroutine_threadsafe(inner_loop(),async_loop)
 
 
     async def sender(websocket):
         while True:
             message = await outgoing.get()
             await websocket.send(message)
-            print('sebt =ut')
 
-    async def handleIncoming(message, websocket):
+    async def handle_incoming(message, websocket):
         message = json.loads(message)
         if message[0]=="startup":
             global local_keywords
@@ -117,20 +122,20 @@ def main():
         elif message[0]=='response':
             await incoming.put(message[1])
 
-    async def botClient():
+    async def bot_client():
         url = "ws://localhost:2299"
         async with websockets.connect(url) as websocket:
             asyncio.get_running_loop().create_task(sender(websocket))
 
             while True:
                 incoming = await websocket.recv()
-                asyncio.run_coroutine_threadsafe(handleIncoming(incoming,websocket),async_loop)
+                asyncio.run_coroutine_threadsafe(handle_incoming(incoming,websocket),async_loop)
 
-    def startClient():
-        async_loop.create_task(botClient())
+    def start_client():
+        async_loop.create_task(bot_client())
         async_loop.run_forever()
 
-    threading.Thread(target=startClient, daemon=True).start()
+    threading.Thread(target=start_client, daemon=True).start()
 
 
     api_key = os.getenv("API_KEY")

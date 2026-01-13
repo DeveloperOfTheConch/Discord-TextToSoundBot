@@ -11,9 +11,13 @@ db = mydb.cursor()
 
 
 
-clients = {}
+connected_clients = {}
 
 async def bot_handler(websocket):
+    """
+    Handles messages incoming from the Discord bot.
+    Switches based on incoming message id.
+    """
     async for message in websocket:
         message = json.loads(message)
         msg_id = message[0]
@@ -23,16 +27,28 @@ async def bot_handler(websocket):
             sql = 'SELECT word FROM sound WHERE id=%s'
             for value in message[1]:
 
-                db.execute(sql,[value])
+                db.execute(sql,[value[0]])
                 vals = db.fetchall()
                 for v in range(len(vals)):
                     vals[v] = vals[v][0]
-                localkeys[value]=vals
+                localkeys[value[0]]=vals
             await websocket.send(json.dumps(['startup',localkeys]))
+            sql = "INSERT INTO client_profles (sid,uid)"
+            val = []
+            for values in message[1]:
+                for members in values[1]:
+                    val.append((values[0],members))
+            db.execute(sql,val)
+            mydb.commit()
+
 
         elif msg_id=='addserver':
             pass
         elif msg_id=='removeserver':
+            pass
+        elif msg_id=='addmember':
+            pass
+        elif msg_id=='removemember':
             pass
         elif msg_id=='serversettings':
             pass
@@ -61,8 +77,9 @@ async def bot_handler(websocket):
 
 
 async def client_handler(websocket):
+    """Handles connections of each client application to the server"""
     client_id = str(uuid.uuid4())
-    clients[client_id]=websocket
+    connected_clients[client_id]=websocket
     startup = await websocket.recv()
     startup = json.loads(startup)
     sql = "INSERT INTO server_profiles (uuid, s_uid, s_sid) VALUES (%s, %s, %s)"
@@ -78,7 +95,7 @@ async def client_handler(websocket):
         pass
     finally:
         print(asyncio.get_running_loop())
-        clients.pop(client_id, None)
+        connected_clients.pop(client_id, None)
         print(f'client {client_id} disconnected!')
         sql = "DELETE FROM server_profiles WHERE uuid=%s"
         val = [client_id]
@@ -94,3 +111,8 @@ async def main():
         await asyncio.Future()
 
 asyncio.run(main())
+
+
+
+#verified dbs: one from connected appl. where combines uuid w/ provided tags
+#and one just with the keypairs of existing accounts in servers

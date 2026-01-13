@@ -25,9 +25,15 @@ def main():
 
     messages = asyncio.Queue()
     def ping():
-        async def innerping():
+        """
+        Converts tkinter button input to asyncio process.
+        Sends specific message from button through to the sender.
+
+        :return: None
+        """
+        async def inner_ping():
             await messages.put('hello button')
-        asyncio.run_coroutine_threadsafe(innerping(),async_loop)
+        asyncio.run_coroutine_threadsafe(inner_ping(),async_loop)
 
 
     root = Tk()
@@ -43,16 +49,18 @@ def main():
     title.grid(column=1,row=1)
     toggle.grid(column=1,row=2)
 
-    async def sendit(websocket):
+    async def send_it(websocket):
+        """Persistently sends any outgoing messages in the queue"""
         while True:
             message = await messages.get()
             await websocket.send(message)
 
     async def client():
+        """Is a websocket client"""
         url = "ws://localhost:2288"
         async with websockets.connect(url) as websocket:
             global titlevar
-            asyncio.get_running_loop().create_task(sendit(websocket))   #expand to subfunc to enable basically every button? maybe only one send but each button just passes coords for status change
+            asyncio.get_running_loop().create_task(send_it(websocket))   #expand to subfunc to enable basically every button? maybe only one send but each button just passes coords for status change
             client_profile = (TEMP_uid,TEMP_sid)
             await websocket.send(json.dumps(client_profile))
             while True:
@@ -62,12 +70,13 @@ def main():
                 titlevar.set(message)
 
 
-    def startClient():
+    def start_client():
+        """Begins the asyncio loop"""
         async_loop.create_task(client())
         async_loop.run_forever()
 
 
-    threading.Thread(target=startClient, daemon=True).start()
+    threading.Thread(target=start_client, daemon=True).start()
 
     root.mainloop()
 
@@ -77,10 +86,11 @@ def main():
 
 
 def startup():
-    '''
-    opens a UI for user to initialize application
-    :return:
-    '''
+    """
+    Opens a UI for user to initialize application.
+    This helps not do too much while antiviruses are evaluating program,
+    due to py.exe's not being trusted.
+    """
 
 
     root = Tk()
@@ -93,10 +103,10 @@ def startup():
 
 
 
-    def runInit():
-        '''
+    def run_init():
+        """
         Initializes the program by creating the proper file paths and .json files to store data
-        '''
+        """
 
         if not (config_path/"config.json").exists():                #check if filebase exists
             try:                                                    #not:
@@ -127,10 +137,10 @@ def startup():
         root.destroy()
 
 
-    initButton = Button(mainframe,font=('Impact',30),text="Initialize",command=runInit)
+    init_button = Button(mainframe,font=('Impact',30),text="Initialize",command=run_init)
 
     mainframe.grid(padx=15,pady=15)
-    initButton.grid(column=1,row=1)
+    init_button.grid(column=1,row=1)
     root.mainloop()
     if started.get()==1:
         main()
