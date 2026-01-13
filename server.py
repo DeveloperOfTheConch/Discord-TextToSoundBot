@@ -4,9 +4,11 @@ import time
 import mysql.connector
 import discord
 import json
+import uuid
 
 mydb = mysql.connector.connect(host='localhost',user='Conch',password='WizardConch1!',database='fahbot')
 db = mydb.cursor()
+
 
 
 clients = {}
@@ -50,17 +52,39 @@ async def bot_handler(websocket):
             pass
 
 
+
+#async def dispatcher(websocket):
+ #   while True:
+  #      message = await client_messages.get()
+
+
+
+
 async def client_handler(websocket):
-    clients[websocket]=[]
+    client_id = str(uuid.uuid4())
+    clients[client_id]=websocket
+    startup = await websocket.recv()
+    startup = json.loads(startup)
+    sql = "INSERT INTO server_profiles (uuid, s_uid, s_sid) VALUES (%s, %s, %s)"
+    val = (client_id, startup[0], startup[1])
+    db.execute(sql,val)
+    mydb.commit()
     print(f'client {websocket} connected!')
+
     try:
         async for message in websocket:
             print(message)
     except websockets.exceptions.ConnectionClosedError:
         pass
     finally:
-        clients.pop(websocket, None)
-        print(f'client {websocket} disconnected!')
+        print(asyncio.get_running_loop())
+        clients.pop(client_id, None)
+        print(f'client {client_id} disconnected!')
+        sql = "DELETE FROM server_profiles WHERE uuid=%s"
+        val = [client_id]
+        db.execute(sql,val)
+        mydb.commit()
+
 
 
 

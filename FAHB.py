@@ -14,6 +14,10 @@ template_path = path.join(exe_path, 'settings.json')
 fah_path = path.join(exe_path, "FAH.mp3")
 global titlevar
 
+
+TEMP_sid = 1026245797450371142
+TEMP_uid = 361861240395661312
+
 def main():
 
 
@@ -49,7 +53,8 @@ def main():
         async with websockets.connect(url) as websocket:
             global titlevar
             asyncio.get_running_loop().create_task(sendit(websocket))   #expand to subfunc to enable basically every button? maybe only one send but each button just passes coords for status change
-
+            client_profile = (TEMP_uid,TEMP_sid)
+            await websocket.send(json.dumps(client_profile))
             while True:
                 print("waiting")
                 message = await websocket.recv()
