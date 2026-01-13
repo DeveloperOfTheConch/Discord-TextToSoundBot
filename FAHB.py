@@ -12,7 +12,7 @@ exe_path = path.abspath(path.dirname(__file__))
 config_path = Path.home() / "AppData" / "Local" / "FAHBot"
 template_path = path.join(exe_path, 'settings.json')
 fah_path = path.join(exe_path, "FAH.mp3")
-
+global titlevar
 
 def main():
 
@@ -22,13 +22,14 @@ def main():
     messages = asyncio.Queue()
     def ping():
         async def innerping():
-            await messages.put("U PRESSED A BUTTON")
+            await messages.put('hello button')
         asyncio.run_coroutine_threadsafe(innerping(),async_loop)
 
 
     root = Tk()
     root.title("FAHBot")
     mainframe = Frame(root)
+    global titlevar
     titlevar = StringVar()
     titlevar.set("FAH INTERACTION TEST")
     title = Label(mainframe, textvariable=titlevar, font = ("Comic Sans MS",40))
@@ -46,13 +47,14 @@ def main():
     async def client():
         url = "ws://localhost:2288"
         async with websockets.connect(url) as websocket:
-
+            global titlevar
             asyncio.get_running_loop().create_task(sendit(websocket))   #expand to subfunc to enable basically every button? maybe only one send but each button just passes coords for status change
 
             while True:
                 print("waiting")
                 message = await websocket.recv()
                 print(message)
+                titlevar.set(message)
 
 
     def startClient():
