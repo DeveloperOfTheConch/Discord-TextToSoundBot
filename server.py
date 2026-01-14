@@ -44,7 +44,7 @@ async def bot_handler(websocket):
 
         elif msg_id=='addserver':
             sql = "INSERT INTO discord_profiles (sid, uid) VALUES (%s, %s)"
-            val = (message[1][0],message[1][1])
+            val = (message[1][0],message[1][1])    #FIX THIS DO THE SAME LOOP AS ABOVE
             db.execute(sql,val)
             mydb.commit()
         elif msg_id=='removeserver':
