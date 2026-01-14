@@ -33,7 +33,7 @@ async def bot_handler(websocket):
                     vals[v] = vals[v][0]
                 localkeys[value[0]]=vals
             await websocket.send(json.dumps(['startup',localkeys]))
-            sql = "INSERT INTO client_profles (sid,uid)"
+            sql = "INSERT INTO discord_profles (sid,uid) VALUES (%s, %s)"
             val = []
             for values in message[1]:
                 for members in values[1]:
@@ -43,13 +43,25 @@ async def bot_handler(websocket):
 
 
         elif msg_id=='addserver':
-            pass
+            sql = "INSERT INTO discord_profiles (sid, uid) VALUES (%s, %s)"
+            val = (message[1][0],message[1][1])
+            db.execute(sql,val)
+            mydb.commit()
         elif msg_id=='removeserver':
-            pass
+            sql = "DELETE FROM discord_profiles WHERE sid=%s"
+            val = (message[1],)
+            db.execute(sql, val)
+            mydb.commit()
         elif msg_id=='addmember':
-            pass
+            sql = 'INSERT INTO discord_profiles (sid, uid) VALUES (%s, %s)'
+            val = (message[1][1],message[1][0])
+            db.execute(sql, val)
+            mydb.commit()
         elif msg_id=='removemember':
-            pass
+            sql = 'DELETE FROM discord_profiles WHERE sid=%s AND uid=%s'
+            val = (message[1],[1], message[1][0])
+            db.execute(sql, val)
+            mydb.commit()
         elif msg_id=='serversettings':
             pass
         elif msg_id=='addsound':

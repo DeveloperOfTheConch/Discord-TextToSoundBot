@@ -16,7 +16,7 @@ def main():
 
     @bot.event
     async def on_guild_join(guild):
-        send(['addserver',guild.id])
+        send(['addserver',[guild.id,[m.id for m in guild.members]]])
 
     @bot.event
     async def on_guild_remove(guild):
@@ -24,11 +24,11 @@ def main():
 
     @bot.event
     async def on_member_join(member):
-        pass
+        send(['addmember',[member.id,member.guild.id]])
 
     @bot.event
     async def on_member_remove(member):
-        pass
+        send(['removemember',[member.id,member.guild.id]])
 
     @bot.event
     async def on_ready():
