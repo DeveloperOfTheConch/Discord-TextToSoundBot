@@ -8,7 +8,7 @@ import uuid
 
 mydb = mysql.connector.connect(host='localhost',user='Conch',password='WizardConch1!',database='fahbot')
 db = mydb.cursor()
-
+b_uid = 1459047155888291968
 
 
 connected_clients = {}
@@ -22,8 +22,11 @@ async def bot_handler(websocket):
         message = json.loads(message)
         msg_id = message[0]
         if msg_id=='startup':
-            localkeys={}
             print(f"WE GOT A STARTUP MESSAGE: {message}")
+            db.execute("DELETE FROM discord_profiles")
+            mydb.commit()
+            localkeys={}
+
             sql = 'SELECT word FROM sound WHERE id=%s'
             for value in message[1]:
 
@@ -33,12 +36,12 @@ async def bot_handler(websocket):
                     vals[v] = vals[v][0]
                 localkeys[value[0]]=vals
             await websocket.send(json.dumps(['startup',localkeys]))
-            sql = "INSERT INTO discord_profles (sid,uid) VALUES (%s, %s)"
-            val = []
+            sql = "INSERT INTO discord_profiles (sid,uid) VALUES (%s, %s)"
+
+
             for values in message[1]:
                 for members in values[1]:
-                    val.append((values[0],members))
-            db.execute(sql,val)
+                    db.execute(sql,(values[0],members))
             mydb.commit()
 
 
@@ -47,23 +50,28 @@ async def bot_handler(websocket):
             val = (message[1][0],message[1][1])    #FIX THIS DO THE SAME LOOP AS ABOVE
             db.execute(sql,val)
             mydb.commit()
+
         elif msg_id=='removeserver':
-            sql = "DELETE FROM discord_profiles WHERE sid=%s"
+            sql = "DELETE FROM discord_profiles WHERE sid=%s"       #also have it delete the settings
             val = (message[1],)
             db.execute(sql, val)
             mydb.commit()
+
         elif msg_id=='addmember':
             sql = 'INSERT INTO discord_profiles (sid, uid) VALUES (%s, %s)'
             val = (message[1][1],message[1][0])
             db.execute(sql, val)
             mydb.commit()
+
         elif msg_id=='removemember':
             sql = 'DELETE FROM discord_profiles WHERE sid=%s AND uid=%s'
             val = (message[1],[1], message[1][0])
             db.execute(sql, val)
             mydb.commit()
+
         elif msg_id=='serversettings':
             pass
+
         elif msg_id=='addsound':
             sql= "INSERT INTO sound (id, word, link) VALUES (%s, %s, %s)"
             val = (message[1],message[2],message[3])
