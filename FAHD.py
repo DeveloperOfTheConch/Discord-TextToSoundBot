@@ -4,6 +4,8 @@ import websockets
 import threading
 import json
 import os
+import requests
+import pytubefix
 
 bot = discord.Bot(intents=discord.Intents.all())
 
@@ -35,7 +37,7 @@ def main():
         ids = [ [123, [456]], [112233, [12, 34]] ]
         for i in bot.guilds:
             ids.append([i.id,[m.id for m in i.members]])
-        send(['startup',ids])
+        send(['startup',ids])                           #add while loop so it persistently tries in case server down
         await asyncio.sleep(3)
         print(f'{bot.user} is now online')
 
@@ -49,7 +51,6 @@ def main():
         keywords = local_keywords[message.guild.id]
         if message.content in keywords:
             send(["playsound",message.content])
-        send(['serversettings',message.content])
 
 
     @bot.slash_command(description="Add a sound: /addsound <keyword> <link>")
@@ -61,9 +62,20 @@ def main():
         if keyword in local_keywords[sid]:
             await ctx.respond(f'{keyword} is already a keyword!')
             return
-        send(["addsound",sid, keyword,link])
+        if "https://www.youtube.com/watch?v=" not in link:
+            await ctx.respond(f"{link} is not a valid YouTube link.")
+            return
+        if "Video unavailable" in requests.get(link).text:
+            await ctx.respond("YouTube video is not available.")
+            return
+        vid = pytubefix.YouTube(link)
+        if vid.length > 10:
+            await ctx.respond('YouTube video is too long! 10 seconds maximum.')
+            return
+        send(["addsound",[ctx.guild.id,keyword,link]])
         await ctx.respond(f"New sound added with keyword {keyword} successfully.")
         local_keywords[sid].append(keyword)
+
 
 
     @bot.slash_command(description="Remove a sound: /removesound <keyword>")
@@ -87,6 +99,13 @@ def main():
             s="No current sounds declared! Use /addsound to get started."
         await ctx.respond(s)
 
+    @bot.slash_command(description='Play a sound targeted at a specific user, dependent on preferences.')
+    async def playsound(ctx, member: discord.Member, sound):
+        if member not in ctx.guild.members:
+            await ctx.respond("User not in server.")
+        if sound not in local_keywords[ctx.guild.id]:
+            await ctx.respond(f'{sound} is not a valid keyword!')
+        send(["targetsound",member.id,sound])
 
     async_loop = asyncio.new_event_loop()
     outgoing = asyncio.Queue()

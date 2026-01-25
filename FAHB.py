@@ -6,13 +6,15 @@ from playsound3 import playsound
 import websockets
 import asyncio
 import threading
+import pytubefix
 
-version = "0.5.0"
+version = "0.5.7"
 exe_path = path.abspath(path.dirname(__file__))
 config_path = Path.home() / "AppData" / "Local" / "FAHBot"
 template_path = path.join(exe_path, 'settings.json')
 fah_path = path.join(exe_path, "FAH.mp3")
 global titlevar
+global settingsvar
 
 
 TEMP_sid = 1026245797450371142
@@ -41,10 +43,12 @@ def main():
     mainframe = Frame(root)
     global titlevar
     titlevar = StringVar()
+    global settingsvar
+    settingsvar = StringVar()
     titlevar.set("FAH INTERACTION TEST")
     title = Label(mainframe, textvariable=titlevar, font = ("Comic Sans MS",40))
     toggle = Button(mainframe, font = ("Impact",25), text = "Connect", command = ping)
-
+    userid = Entry(mainframe, textvariable=settingsvar)
     mainframe.grid(padx=50,pady=50)
     title.grid(column=1,row=1)
     toggle.grid(column=1,row=2)
@@ -55,19 +59,44 @@ def main():
             message = await messages.get()
             await websocket.send(message)
 
+    def playit(file):
+        print("playing it")
+        print((config_path/"MP3"/(file+'.mp3')))
+        playsound((config_path/"MP3"/(file+'.mp3')))
+
+    def sound_adder(keyword, link):
+        aud = pytubefix.YouTube(link)
+        print(aud)
+        aud.streams.filter(only_audio=True)
+        print(aud.streams.filter(only_audio=True))
+        print(aud.streams.get_audio_only())
+        aud.streams.get_audio_only().download(filename=keyword+'.mp3',output_path=str((config_path/"MP3")))
+
+
     async def client():
         """Is a websocket client"""
         url = "ws://localhost:2288"
         async with websockets.connect(url) as websocket:
             global titlevar
+            global settingsvar
             asyncio.get_running_loop().create_task(send_it(websocket))   #expand to subfunc to enable basically every button? maybe only one send but each button just passes coords for status change
-            client_profile = (TEMP_uid,TEMP_sid)
+            client_profile = (TEMP_uid,TEMP_sid)                                    # ^ also simultaneously it writes to the json. evry button thru one
             await websocket.send(json.dumps(client_profile))
             while True:
                 print("waiting")
                 message = await websocket.recv()
+                message = json.loads(message)
                 print(message)
+                if message[0] == 'addsound':
+                    sound_adder(message[1][0],message[1][1])
+                elif message[0] == 'removesound':
+                    pass                                                    #add and remove sounds while live, we add a database refernce when client starts to check stored sounds against all sounds.
+                elif message[0] == 'playsound':
+                    threading.Thread(target=playit, args=(message[1],)).start()
+                print(message)
+
                 titlevar.set(message)
+
 
 
     def start_client():
@@ -107,15 +136,15 @@ def startup():
         """
         Initializes the program by creating the proper file paths and .json files to store data
         """
-
-        if not (config_path/"config.json").exists():                #check if filebase exists
+        if not ((config_path/"config.json").exists()):                #check if filebase exists
             try:                                                    #not:
-                makedirs(config_path)                               #attempt to create folder
+                makedirs(config_path)                       #attempt to create folder
             except FileExistsError:
                 pass                                                #if folder exists, eh
             except WindowsError as err:
                 print(err)                                          #windows throws something, meh
                 return
+
             with open(template_path) as f:                          #dump template with current version in
                 settings = json.load(f)
             settings["Version"]=version
@@ -131,7 +160,14 @@ def startup():
             new_settings["Version"] = version
             with open(config_path/"config.json","w") as f:          #Eventually will be update check
                 json.dump(new_settings,f)
-
+        if not (config_path/"MP3").exists():
+            try:
+                makedirs(config_path/"MP3")
+            except FileExistsError:
+                pass                                         # if folder exists, eh
+            except WindowsError as err:
+                print(err)                                  # windows throws something, meh
+                return
 
         started.set(1)
         root.destroy()
@@ -147,7 +183,7 @@ def startup():
 
 
 if __name__ == "__main__":
-    if (config_path/"config.json").exists():                            #Check if config file established
+    if (config_path/"config.json").exists() and (config_path/"MP3").exists():                            #Check if config file established
         with open(config_path/"config.json") as f:
             try:
                 temp_config = json.load(f)

@@ -74,10 +74,17 @@ async def bot_handler(websocket):
 
         elif msg_id=='addsound':
             sql= "INSERT INTO sound (id, word, link) VALUES (%s, %s, %s)"
-            val = (message[1],message[2],message[3])
+            val = (message[1][0],message[1][1],message[1][2])
             db.execute(sql, val)
             mydb.commit()
             print(db.rowcount, "record inserted")
+
+
+            for client in connected_clients.values():
+                m = json.dumps(["addsound",[message[1][1],message[1][2]]])
+                await client.send(m)
+
+
         elif msg_id=='removesound':
             sql = 'DELETE FROM sound WHERE id=%s AND word=%s'
             val = (message[1], message[2])
@@ -85,7 +92,18 @@ async def bot_handler(websocket):
             mydb.commit()
             print(db.rowcount, "sound deleted")
         elif msg_id=='playsound':
+
+
+            for client in connected_clients.values():
+                await client.send(json.dumps(['playsound',message[1]]))
+
+
+        elif msg_id=='targetsound':
             pass
+
+#send sound to each client who has the server
+#when client connects, access the uhh list of sounds per server
+#download sound button
 
 
 
