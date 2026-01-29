@@ -2,6 +2,8 @@ from tkinter import *
 from os import path, makedirs
 from pathlib import Path
 import json
+
+from mypy.types import AnyType
 from playsound3 import playsound
 import websockets
 import asyncio
@@ -14,7 +16,6 @@ config_path = Path.home() / "AppData" / "Local" / "FAHBot"
 template_path = path.join(exe_path, 'settings.json')
 fah_path = path.join(exe_path, "FAH.mp3")
 global titlevar
-global settingsvar
 
 
 TEMP_sid = 1026245797450371142
@@ -26,7 +27,7 @@ def main():
     async_loop = asyncio.new_event_loop()
 
     messages = asyncio.Queue()
-    def ping():
+    def ping(message: AnyType = "hello button"):
         """
         Converts tkinter button input to asyncio process.
         Sends specific message from button through to the sender.
@@ -34,7 +35,7 @@ def main():
         :return: None
         """
         async def inner_ping():
-            await messages.put('hello button')
+            await messages.put(message)
         asyncio.run_coroutine_threadsafe(inner_ping(),async_loop)
 
 
@@ -43,21 +44,60 @@ def main():
     mainframe = Frame(root)
     global titlevar
     titlevar = StringVar()
-    global settingsvar
-    settingsvar = StringVar()
+    servar = StringVar()
+    uservar = StringVar()
     titlevar.set("FAH INTERACTION TEST")
     title = Label(mainframe, textvariable=titlevar, font = ("Comic Sans MS",40))
     toggle = Button(mainframe, font = ("Impact",25), text = "Connect", command = ping)
-    userid = Entry(mainframe, textvariable=settingsvar)
+    servid = Entry(mainframe, textvariable=servar)
+    userid = Entry(mainframe, textvariable=uservar)
+
+
+    def updater():
+        sid = servar.get()
+        uid = uservar.get()
+        uids = uid.split(',')
+                                        #WHY MULTIPLE USERS NOT  MULTIPLE SERVERS DUMBASS
+        if not 18<=len(sid)<=20:
+            return
+        for u in uids:
+            if not 18<=len(u)<=20:
+                return
+        ping(['c_id',[sid,uids]])
+
+
+    def sval(input, focus):
+        if input.isdigit() or input == "":
+            if focus == 'focusout':
+                updater()
+            return True
+        else:
+            return False
+
+    def uval(input, focus):
+        if input.isdigit() or input == "," or input == "":
+            if focus == 'focusout':
+                updater()
+            return True
+        else:
+            return False
+
+    sreg = root.register(sval)
+    servid.config(validate='all',validatecommand=(sreg,'%P', "%V"))
+    ureg = root.register(uval)
+    userid.config(validate='all', validatecommand=(ureg, '%S', '%V'))
+
     mainframe.grid(padx=50,pady=50)
     title.grid(column=1,row=1)
-    toggle.grid(column=1,row=2)
+    toggle.grid(column=1,row=3)
+    servid.grid(column=1,row=2)
+    userid.grid(column=2,row=2)
 
     async def send_it(websocket):
         """Persistently sends any outgoing messages in the queue"""
         while True:
             message = await messages.get()
-            await websocket.send(message)
+            await websocket.send(json.dumps(message))
 
     def playit(file):
         print("playing it")
@@ -80,8 +120,7 @@ def main():
             global titlevar
             global settingsvar
             asyncio.get_running_loop().create_task(send_it(websocket))   #expand to subfunc to enable basically every button? maybe only one send but each button just passes coords for status change
-            client_profile = (TEMP_uid,TEMP_sid)                                    # ^ also simultaneously it writes to the json. evry button thru one
-            await websocket.send(json.dumps(client_profile))
+
             while True:
                 print("waiting")
                 message = await websocket.recv()

@@ -91,11 +91,22 @@ async def bot_handler(websocket):
             db.execute(sql,val)
             mydb.commit()
             print(db.rowcount, "sound deleted")
+
+
+
+
+
+
         elif msg_id=='playsound':
 
 
-            for client in connected_clients.values():
-                await client.send(json.dumps(['playsound',message[1]]))
+            sql = 'SELECT uuid FROM server_profiles INNER JOIN discord_profiles ON server_profiles.s_uid = discord_profiles.uid AND server_profiles.s_sid = discord_profiles.sid'
+            db.execute(sql)
+            users = db.fetchall()
+            for u in users:
+                await connected_clients[u[0]].send(json.dumps(['playsound',message[1]]))
+
+
 
 
         elif msg_id=='targetsound':
@@ -113,22 +124,34 @@ async def bot_handler(websocket):
 
 
 
+def client_handler(websocket, message, client_id):
 
-async def client_handler(websocket):
+    msg_id = message[0]
+    msg = message[1]
+
+    if msg_id == 'c_id':
+        sid = msg[0]
+        uids = msg[1]
+
+        nsql = 'INSERT INTO server_profiles (uuid, s_uid, s_sid) select %s, %s, %s WHERE NOT EXISTS(SELECT 1 from server_profiles WHERE uuid=%s AND s_uid = %s AND s_sid = %s);'
+        for u in uids:
+            val = (client_id, int(u), sid, client_id, int(u), sid)
+            db.execute(nsql, val)
+            mydb.commit()
+
+
+
+
+
+async def client_connector(websocket):
     """Handles connections of each client application to the server"""
     client_id = str(uuid.uuid4())
     connected_clients[client_id]=websocket
-    startup = await websocket.recv()
-    startup = json.loads(startup)
-    sql = "INSERT INTO server_profiles (uuid, s_uid, s_sid) VALUES (%s, %s, %s)"
-    val = (client_id, startup[0], startup[1])
-    db.execute(sql,val)
-    mydb.commit()
     print(f'client {websocket} connected!')
 
     try:
         async for message in websocket:
-            print(message)
+            client_handler(websocket, json.loads(message), client_id)
     except websockets.exceptions.ConnectionClosedError:
         pass
     finally:
@@ -144,7 +167,7 @@ async def client_handler(websocket):
 
 
 async def main():
-    async with websockets.serve(client_handler, "localhost",2288), websockets.serve(bot_handler, "localhost", 2299):
+    async with websockets.serve(client_connector, "localhost",2288), websockets.serve(bot_handler, "localhost", 2299):
         print("Server running")
         await asyncio.Future()
 
