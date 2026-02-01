@@ -1,14 +1,18 @@
+import os.path
 from tkinter import *
 from os import path, makedirs
 from pathlib import Path
 import json
 
-from mypy.types import AnyType
+from typing import Any
 from playsound3 import playsound
 import websockets
 import asyncio
 import threading
 import pytubefix
+import re
+import random
+import time
 
 version = "0.5.7"
 exe_path = path.abspath(path.dirname(__file__))
@@ -27,7 +31,7 @@ def main():
     async_loop = asyncio.new_event_loop()
 
     messages = asyncio.Queue()
-    def ping(message: AnyType = "hello button"):
+    def ping(message: Any = "hello button"):
         """
         Converts tkinter button input to asyncio process.
         Sends specific message from button through to the sender.
@@ -55,19 +59,23 @@ def main():
 
     def updater():
         sid = servar.get()
+        sids = []
         uid = uservar.get()
-        uids = uid.split(',')
-                                        #WHY MULTIPLE USERS NOT  MULTIPLE SERVERS DUMBASS
-        if not 18<=len(sid)<=20:
+        uids = []
+
+        for s in sid.split(','):                             #regex check, and then remove deleted servers and uids
+            if 18<=len(s)<=20:
+                sids.append(s)
+        for u in uid.split(','):
+            if 18<=len(u)<=20:
+                uids.append(u)
+        if len(sids) == 0 or len(uids) == 0:
             return
-        for u in uids:
-            if not 18<=len(u)<=20:
-                return
-        ping(['c_id',[sid,uids]])
+        ping(['c_id',[sids,uids]])
 
 
     def sval(input, focus):
-        if input.isdigit() or input == "":
+        if re.search(r'^[0-9,]*$',input):
             if focus == 'focusout':
                 updater()
             return True
@@ -75,7 +83,7 @@ def main():
             return False
 
     def uval(input, focus):
-        if input.isdigit() or input == "," or input == "":
+        if re.search(r'^[0-9,]*$',input):
             if focus == 'focusout':
                 updater()
             return True
@@ -85,7 +93,7 @@ def main():
     sreg = root.register(sval)
     servid.config(validate='all',validatecommand=(sreg,'%P', "%V"))
     ureg = root.register(uval)
-    userid.config(validate='all', validatecommand=(ureg, '%S', '%V'))
+    userid.config(validate='all', validatecommand=(ureg, '%P', '%V'))
 
     mainframe.grid(padx=50,pady=50)
     title.grid(column=1,row=1)
@@ -99,18 +107,23 @@ def main():
             message = await messages.get()
             await websocket.send(json.dumps(message))
 
-    def playit(file):
+    def playit(file,sid):
         print("playing it")
-        print((config_path/"MP3"/(file+'.mp3')))
-        playsound((config_path/"MP3"/(file+'.mp3')))
+        print((config_path/"MP3"/(file+'_'+sid+'.mp3')))
+        time.sleep(random.randint(0,5))
+        playsound((config_path/"MP3"/(file+'_'+sid+'.mp3')))
 
-    def sound_adder(keyword, link):
+    def sound_adder(sid, keyword, link):
         aud = pytubefix.YouTube(link)
         print(aud)
         aud.streams.filter(only_audio=True)
         print(aud.streams.filter(only_audio=True))
         print(aud.streams.get_audio_only())
-        aud.streams.get_audio_only().download(filename=keyword+'.mp3',output_path=str((config_path/"MP3")))
+        aud.streams.get_audio_only().download(filename=keyword+'_'+sid+'.mp3',output_path=str((config_path/"MP3")))
+
+    def sound_remover(sid, keyword):
+        if os.path.exists(str((config_path/"MP3"))+'/'+keyword+'_'+sid+'.mp3'):
+            os.remove(str((config_path/"MP3"))+'/'+keyword+'_'+sid+'.mp3')
 
 
     async def client():
@@ -127,11 +140,11 @@ def main():
                 message = json.loads(message)
                 print(message)
                 if message[0] == 'addsound':
-                    sound_adder(message[1][0],message[1][1])
+                    sound_adder(message[1],message[2],message[3])
                 elif message[0] == 'removesound':
-                    pass                                                    #add and remove sounds while live, we add a database refernce when client starts to check stored sounds against all sounds.
+                    sound_remover(message[1],message[2])                                                #add and remove sounds while live, we add a database refernce when client starts to check stored sounds against all sounds.
                 elif message[0] == 'playsound':
-                    threading.Thread(target=playit, args=(message[1],)).start()
+                    threading.Thread(target=playit, args=(message[1],message[2])).start()
                 print(message)
 
                 titlevar.set(message)

@@ -50,7 +50,7 @@ def main():
             return
         keywords = local_keywords[message.guild.id]
         if message.content in keywords:
-            send(["playsound",message.content])
+            send(["playsound",message.content,message.guild.id])
 
 
     @bot.slash_command(description="Add a sound: /addsound <keyword> <link>")

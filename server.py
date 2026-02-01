@@ -81,7 +81,7 @@ async def bot_handler(websocket):
 
 
             for client in connected_clients.values():
-                m = json.dumps(["addsound",[message[1][1],message[1][2]]])
+                m = json.dumps(["addsound",str(message[1][0]),message[1][1],message[1][2]])
                 await client.send(m)
 
 
@@ -92,6 +92,10 @@ async def bot_handler(websocket):
             mydb.commit()
             print(db.rowcount, "sound deleted")
 
+            for client in connected_clients.values():
+                m = json.dumps(['removesound',str(message[1]),message[2]])
+                await client.send(m)
+
 
 
 
@@ -100,11 +104,11 @@ async def bot_handler(websocket):
         elif msg_id=='playsound':
 
 
-            sql = 'SELECT uuid FROM server_profiles INNER JOIN discord_profiles ON server_profiles.s_uid = discord_profiles.uid AND server_profiles.s_sid = discord_profiles.sid'
-            db.execute(sql)
+            sql = 'SELECT uuid FROM server_profiles INNER JOIN discord_profiles ON server_profiles.s_uid = discord_profiles.uid AND server_profiles.s_sid = discord_profiles.sid WHERE sid = %s'
+            db.execute(sql, (message[2],))
             users = db.fetchall()
             for u in users:
-                await connected_clients[u[0]].send(json.dumps(['playsound',message[1]]))
+                await connected_clients[u[0]].send(json.dumps(['playsound',message[1], str(message[2])]))
 
 
 
@@ -130,14 +134,23 @@ def client_handler(websocket, message, client_id):
     msg = message[1]
 
     if msg_id == 'c_id':
-        sid = msg[0]
+        sids = msg[0]
         uids = msg[1]
-
+        sql = 'SELECT * FROM server_profiles WHERE uuid=%s'
+        db.execute(sql, (client_id,))
+        conns = db.fetchall()
+        print(conns)
+        for c in conns:
+            if (str(c[1]) not in uids) or (str(c[2]) not in sids):
+                asql='DELETE FROM server_profiles WHERE uuid=%s AND s_uid=%s AND s_sid=%s'
+                db.execute(asql,(client_id,c[1],c[2]))
+                mydb.commit()
         nsql = 'INSERT INTO server_profiles (uuid, s_uid, s_sid) select %s, %s, %s WHERE NOT EXISTS(SELECT 1 from server_profiles WHERE uuid=%s AND s_uid = %s AND s_sid = %s);'
         for u in uids:
-            val = (client_id, int(u), sid, client_id, int(u), sid)
-            db.execute(nsql, val)
-            mydb.commit()
+            for s in sids:
+                val = (client_id, int(u), int(s), client_id, int(u), int(s))
+                db.execute(nsql, val)
+                mydb.commit()
 
 
 
